@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ford-Fulkerson · Flujo máximo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <h1>Ford&#8209;Fulkerson</h1>
+      <span class="tag">flujo máximo · corte mínimo</span>
+    </div>
+    <div class="stage-track" id="stageTrack">
+      <span data-s="setup">1 · Configuración</span>
+      <span data-s="editor">2 · Grafo</span>
+      <span data-s="endpoints">3 · Fuente/Sumidero</span>
+      <span data-s="algo">4 · Algoritmo</span>
+      <span data-s="summary">5 · Resultado</span>
+    </div>
+    <button id="restartBtn" title="Reiniciar toda la aplicación">↺ reiniciar</button>
+  </header>
+
+  <!-- ============ SCREEN 1: SETUP ============ -->
+  <section class="screen" id="screen-setup">
+    <div class="panel">
+      <h2>Número de nodos</h2>
+      <p class="muted" style="margin:0 0 6px;">Elige cuántos nodos tendrá el grafo dirigido.</p>
+      <div class="numfield">
+        <input type="number" id="nInput" min="7" max="16" value="9">
+        <span class="faint">n ∈ [7, 16]</span>
+      </div>
+      <div class="hint" id="nError"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Origen del grafo</h2>
+      <div class="mode-row">
+        <div class="mode-card" id="cardManual">
+          <h3>✏️ Construcción manual</h3>
+          <p>Colocas los nodos en el lienzo y defines cada arista con su capacidad, uno por uno.</p>
+        </div>
+        <div class="mode-card" id="cardRandom">
+          <h3>🎲 Generación aleatoria</h3>
+          <p>El sistema arma un grafo dirigido acíclico con capacidades entre 1 y 20, listo para editar.</p>
+        </div>
+      </div>
+      <div class="hint">En ambos casos el sistema impide que se formen ciclos.</div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN 2: EDITOR ============ -->
+  <section class="screen" id="screen-editor">
+    <div class="editor-grid">
+      <div class="panel canvas-panel">
+        <div class="canvas-toolbar">
+          <button class="btn" id="btnAddNode">➕ Agregar nodo</button>
+          <button class="btn" id="btnAddEdge">🔗 Agregar arista</button>
+          <button class="btn ghost" id="btnLayout">🧭 Organizar</button>
+          <button class="btn ghost" id="btnRegen" style="display:none;">🎲 Regenerar</button>
+          <div class="spacer"></div>
+          <span class="progresspill">Nodos: <b id="nodeCount">0</b>/<span id="nodeTarget">0</span></span>
+        </div>
+        <svg class="graph" id="editorSvg" viewBox="0 0 1000 560" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="msgbar" id="editorMsg"></div>
+      </div>
+
+      <div>
+        <div class="panel">
+          <h3 style="margin-top:0;">Aristas</h3>
+          <div class="side-block">
+            <table class="edgetable" id="edgeTable">
+              <thead><tr><th>Origen</th><th>Destino</th><th>Cap.</th><th></th></tr></thead>
+              <tbody id="edgeTableBody"></tbody>
+            </table>
+            <div class="empty" id="edgeEmptyMsg">Aún no hay aristas.</div>
+          </div>
+          <h3>Agregar por formulario</h3>
+          <div class="formrow">
+            <select id="formFrom"></select>
+            <span class="faint">→</span>
+            <select id="formTo"></select>
+            <input type="number" id="formCap" placeholder="cap" min="1">
+            <button class="btn" id="formAddBtn">Agregar</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="btnrow" style="justify-content:space-between;">
+            <button class="btn danger ghost" id="btnResetGraph">Reiniciar grafo</button>
+            <button class="btn primary" id="btnToEndpoints" disabled>Continuar →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN 3: ENDPOINTS ============ -->
+  <section class="screen" id="screen-endpoints">
+    <div class="panel">
+      <h2>Elige fuente(s) y sumidero(s)</h2>
+      <p class="muted" style="margin-top:0;">Puedes marcar más de un nodo como fuente o como sumidero. Si eliges varios, el sistema agregará automáticamente un <b>origen ficticio S</b> y/o un <b>destino ficticio T</b> conectados con capacidad infinita, tal como se describe en la lectura.</p>
+      <table class="endpoint-table">
+        <thead><tr><th>Nodo</th><th>Fuente</th><th>Sumidero</th></tr></thead>
+        <tbody id="endpointBody"></tbody>
+      </table>
+      <div class="hint" id="endpointError"></div>
+    </div>
+    <div class="panel" id="endpointPreviewPanel" style="display:none;">
+      <h2>Vista previa de la red</h2>
+      <svg class="graph" id="endpointSvg" viewBox="0 0 1000 560" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+    <div class="btnrow" style="justify-content:flex-end;">
+      <button class="btn primary" id="btnToAlgo" disabled>Construir red y continuar →</button>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN 4: ALGORITHM ============ -->
+  <section class="screen" id="screen-algo">
+    <div class="algo-grid">
+      <div>
+        <div class="stat-row">
+          <div class="stat"><div class="k">flujo actual |f|</div><div class="v" id="statFlow">0</div></div>
+          <div class="stat"><div class="k">iteración</div><div class="v" id="statIter">0</div></div>
+        </div>
+        <div class="panel">
+          <h2>Red residual</h2>
+          <svg class="graph" id="algoSvg" viewBox="0 0 1000 560" xmlns="http://www.w3.org/2000/svg"></svg>
+          <div class="legend">
+            <span><span class="dot" style="background:#f2b134"></span>fuente</span>
+            <span><span class="dot" style="background:#ef6461"></span>sumidero</span>
+            <span><span class="dot" style="background:#b39cf2"></span>ficticio</span>
+            <span><span class="dot" style="background:#4fd1c5"></span>camino de aumento</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="panel">
+          <h3 style="margin-top:0;">Etapa actual</h3>
+          <div id="algoStageBox"><p class="empty">Presiona «Buscar camino aumentante» para iniciar la etapa de etiquetación.</p></div>
+          <div class="btnrow" style="margin-top:12px;">
+            <button class="btn primary" id="btnFindPath">Buscar camino aumentante</button>
+            <button class="btn" id="btnApplyPath" disabled>Aplicar incremento</button>
+          </div>
+          <div class="btnrow" style="margin-top:8px;">
+            <button class="btn ghost" id="btnAutoSolve">⏩ Resolver automáticamente</button>
+          </div>
+        </div>
+        <div class="panel">
+          <h3 style="margin-top:0;">Historial de iteraciones</h3>
+          <div class="history" id="historyBox"><div class="empty">Sin iteraciones todavía.</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN 5: SUMMARY ============ -->
+  <section class="screen" id="screen-summary">
+    <div class="panel">
+      <h2>Flujo máximo encontrado: <span class="mono" id="finalFlowVal" style="color:var(--teal)">0</span></h2>
+      <div class="verify" id="verifyBox"></div>
+      <svg class="graph" id="summarySvg" viewBox="0 0 1000 560" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div class="legend">
+        <span><span class="dot" style="background:#f2b134"></span>conjunto S (etiquetados)</span>
+        <span><span class="dot" style="background:#ef6461"></span>conjunto T (no etiquetados)</span>
+        <span><span class="dot" style="background:#4fd1c5"></span>arco del corte mínimo</span>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="panel">
+        <h3 style="margin-top:0;">Flujo por arista</h3>
+        <table class="edgetable" id="finalEdgeTable">
+          <thead><tr><th>Arco</th><th>Capacidad</th><th>Flujo</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="panel">
+        <h3 style="margin-top:0;">Caminos de aumento utilizados</h3>
+        <div class="history" id="finalHistoryBox"></div>
+      </div>
+    </div>
+    <div class="panel" id="contribPanel" style="display:none;">
+      <h3 style="margin-top:0;">Aporte por origen/destino real</h3>
+      <div id="contribBox"></div>
+    </div>
+  </section>
+
+  <footer class="note">Aplicación construida siguiendo el método de etiquetación de Ford&#8209;Fulkerson (Lectura 6.1 y 6.2) — etiquetas (a⁺,Δ(x)) / (a⁻,Δ(x)) y verificación |f| = c(S,T).</footer>
+</div>
+
+<!-- capacity modal -->
+<div class="modal-overlay" id="capModalOverlay">
+  <div class="modal-box">
+    <h3 id="capModalTitle">Capacidad de la arista</h3>
+    <p id="capModalSub">Ingresa un entero positivo.</p>
+    <input type="number" id="capModalInput" min="1" value="10">
+    <div class="row">
+      <button class="btn ghost" id="capModalCancel">Cancelar</button>
+      <button class="btn primary" id="capModalOk">Aceptar</button>
+    </div>
+  </div>
+</div>
+
+<script src="logica.js"></script>
+</body>
+</html>
