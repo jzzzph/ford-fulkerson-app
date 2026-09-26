@@ -26,14 +26,6 @@ cd ford-fulkerson-app
 python3 -m http.server 8000   # y luego entrar a http://localhost:8000
 ```
 
-## Demo en vivo (GitHub Pages)
-
-Si activas GitHub Pages en este repositorio (Settings -> Pages -> Deploy from branch -> main -> / (root)), la aplicacion queda disponible en:
-
-```
-https://<tu-usuario>.github.io/ford-fulkerson-app/
-```
-
 ## Tecnologias
 
 HTML, CSS y JavaScript nativo (sin frameworks ni librerias externas). El grafo se dibuja con SVG directamente en el DOM.
