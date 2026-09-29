@@ -139,9 +139,11 @@ function renderGraph(svg, opts){
   svg.innerHTML = "";
   // defs (arrowheads)
   const defs = el("defs");
-  ["arrow-def","arrow-active","arrow-cut"].forEach((id,i)=>{
+  const pfx = svg.id; // prefijo único por lienzo: evita ids repetidos entre pantallas
+  ["arrow-def","arrow-active","arrow-cut"].forEach((name,i)=>{
+    const id = pfx+"-"+name;
     const color = i===0? "#5c7186" : (i===1? "#4fd1c5" : "#ef6461");
-    const marker = el("marker",{id:id, markerWidth:"8", markerHeight:"8", refX:"7", refY:"4", orient:"auto"});
+    const marker = el("marker",{id:id, viewBox:"0 0 8 8", markerWidth:"5", markerHeight:"5", refX:"7", refY:"4", orient:"auto"});
     marker.appendChild(el("path",{d:"M0,0 L8,4 L0,8 Z", fill:color}));
     defs.appendChild(marker);
   });
@@ -163,10 +165,10 @@ function renderGraph(svg, opts){
     const ux=dx/dist, uy=dy/dist;
     const x1=a.x+ux*NODE_R, y1=a.y+uy*NODE_R;
     const x2=b.x-ux*NODE_R, y2=b.y-uy*NODE_R;
-    let stroke="#3c5164", width="1.6", marker="url(#arrow-def)", dash="";
+    let stroke="#3c5164", width="1.6", marker=`url(#${pfx}-arrow-def)`, dash="";
     let isCut=false;
-    if(cutEdgeIds.has(e.id)){ stroke="#ef6461"; width="3"; marker="url(#arrow-cut)"; isCut=true; }
-    else if(highlightEdgeIds.has(e.id)){ stroke="#4fd1c5"; width="3"; marker="url(#arrow-active)"; }
+    if(cutEdgeIds.has(e.id)){ stroke="#ef6461"; width="3"; marker=`url(#${pfx}-arrow-cut)`; isCut=true; }
+    else if(highlightEdgeIds.has(e.id)){ stroke="#4fd1c5"; width="3"; marker=`url(#${pfx}-arrow-active)`; }
     else if(opts.showFlow && e.flow>0){ stroke="#5c8aa8"; width="2"; }
     const line = el("line",{x1,y1,x2,y2,stroke,"stroke-width":width,"marker-end":marker});
     if(isCut) line.setAttribute("stroke-dasharray","6,4");
