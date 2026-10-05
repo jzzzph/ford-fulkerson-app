@@ -119,6 +119,20 @@ function autoLayout(nodes, edges, width, height){
   });
 }
 
+/* Ubica solo los nodos ficticios S y T, sin mover los nodos del usuario.
+   S va a la izquierda de todo el grafo y T a la derecha, a la altura
+   promedio de las fuentes y sumideros reales que conectan. */
+function placeDummies(nodes){
+  const real = nodes.filter(n=>!n.role.startsWith("dummy"));
+  const minX = Math.min(...real.map(n=>n.x));
+  const maxX = Math.max(...real.map(n=>n.x));
+  const avgY = list => list.reduce((a,n)=>a+n.y,0)/list.length;
+  nodes.forEach(n=>{
+    if(n.role==="dummy-source"){ n.x = minX-90; n.y = avgY(real.filter(r=>r.role==="source")); }
+    if(n.role==="dummy-sink"){   n.x = maxX+90; n.y = avgY(real.filter(r=>r.role==="sink")); }
+  });
+}
+
 /* ===================== rendering ===================== */
 const NODE_R = 19;
 function nodeColor(nd){
@@ -143,14 +157,19 @@ function renderGraph(svg, opts){
   ["arrow-def","arrow-active","arrow-cut"].forEach((name,i)=>{
     const id = pfx+"-"+name;
     const color = i===0? "#5c7186" : (i===1? "#4fd1c5" : "#ef6461");
-    const marker = el("marker",{id:id, viewBox:"0 0 8 8", markerWidth:"5", markerHeight:"5", refX:"7", refY:"4", orient:"auto"});
+    const marker = el("marker",{id:id, markerWidth:"8", markerHeight:"8", refX:"7", refY:"4", orient:"auto"});
     marker.appendChild(el("path",{d:"M0,0 L8,4 L0,8 Z", fill:color}));
     defs.appendChild(marker);
   });
   svg.appendChild(defs);
 
   // background capture rect for add-node clicks
-  const bg = el("rect",{x:0,y:0,width:1000,height:560,fill:"transparent"});
+  // ajustar el área visible del lienzo para que entren todos los nodos (incluidos S y T)
+  const xs = S.nodes.map(n=>n.x), ys = S.nodes.map(n=>n.y);
+  const vx0 = Math.min(0, ...xs.map(x=>x-40)), vx1 = Math.max(1000, ...xs.map(x=>x+40));
+  const vy0 = Math.min(0, ...ys.map(y=>y-40)), vy1 = Math.max(560, ...ys.map(y=>y+40));
+  svg.setAttribute("viewBox", `${vx0} ${vy0} ${vx1-vx0} ${vy1-vy0}`);
+  const bg = el("rect",{x:vx0,y:vy0,width:vx1-vx0,height:vy1-vy0,fill:"transparent"});
   bg.addEventListener("click", onCanvasBgClick);
   svg.appendChild(bg);
 
@@ -510,7 +529,7 @@ function previewEndpoints(){
     previewNodes.push({id:"__T__", label:"T", x:0,y:0, role:"dummy-sink"});
     S.originalSinks.forEach(id=> previewEdges.push({id:"pT_"+id, u:id, v:"__T__", cap:Infinity, flow:0}));
   }
-  autoLayout(previewNodes, previewEdges, 1000, 560);
+  placeDummies(previewNodes);
   const svg = document.getElementById("endpointSvg");
   const savedNodes=S.nodes, savedEdges=S.edges;
   S.nodes = previewNodes; S.edges = previewEdges;
@@ -544,7 +563,7 @@ function commitEndpoints(){
   } else {
     S.sinkId = S.originalSinks[0];
   }
-  autoLayout(S.nodes, S.edges, 1000, 560);
+  placeDummies(S.nodes);
   S.history=[]; S.lastSearch=null;
 }
 
